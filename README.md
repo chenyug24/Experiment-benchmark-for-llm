@@ -55,3 +55,8 @@ For a real pilot, create:
 - `data/pilot_corpus.jsonl` with prior literature and release dates.
 - A held-out split so the majority baseline is fit on training labels only.
 - Manual leakage audit samples for ambiguous papers, preprints, and online-first publication records.
+
+## Paper Drafts
+
+- `paper_draft.md`: first manuscript-style draft of the benchmark paper.
+- `reading_guide_zh.md`: Chinese guide explaining how to read the paper and how to continue the project.
