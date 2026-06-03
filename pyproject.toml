@@ -1,0 +1,9 @@
+[project]
+name = "temporal-science-benchmark"
+version = "0.1.0"
+description = "Starter implementation for a temporally controlled benchmark of scientific finding prediction."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+temporal-benchmark = "temporal_benchmark.cli:main"
