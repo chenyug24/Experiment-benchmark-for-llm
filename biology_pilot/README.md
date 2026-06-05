@@ -6,6 +6,7 @@ It contains:
 
 - `target_papers.md`: 10 candidate biology / biomedical target papers.
 - `biology_pilot_instances.jsonl`: 60 draft prediction instances, about 6 questions per target paper.
+- `questions_and_answers_zh.md`: Chinese readable version of the 60 questions and answers.
 - `search_candidates_example.jsonl`: a tiny example of agent-found candidate papers before temporal gating.
 - `quantitative_question_candidates.md`: candidate correlation / effect-size questions that need full-text numeric extraction.
 
