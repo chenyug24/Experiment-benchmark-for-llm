@@ -10,8 +10,9 @@ from .baselines import (
     nearest_prior_paper_baseline,
     random_baseline,
 )
-from .io import load_corpus, load_instances, write_predictions
+from .io import load_corpus, load_instances, write_jsonl, write_predictions
 from .metrics import metric_report
+from .search_gate import gate_search_results
 from .temporal import allowed_prior_papers, cutoff_date, leakage_flags
 
 
@@ -38,6 +39,16 @@ def main(argv: list[str] | None = None) -> None:
     evaluate_parser.add_argument("--instances", required=True)
     evaluate_parser.add_argument("--predictions", required=True)
 
+    gate_parser = subparsers.add_parser(
+        "gate-search",
+        help="Filter agent/search candidate papers through cutoff and leakage rules.",
+    )
+    gate_parser.add_argument("--instances", required=True)
+    gate_parser.add_argument("--candidate-corpus", required=True)
+    gate_parser.add_argument("--access-mode", default="preprint_aware", choices=["strict", "preprint_aware", "reference_only"])
+    gate_parser.add_argument("--out", required=True)
+    gate_parser.add_argument("--audit-out", required=True)
+
     args = parser.parse_args(argv)
     if args.command == "validate":
         _validate(args.instances, args.corpus, args.access_mode)
@@ -45,6 +56,8 @@ def main(argv: list[str] | None = None) -> None:
         _run_baseline(args)
     elif args.command == "evaluate":
         _evaluate(args.instances, args.predictions)
+    elif args.command == "gate-search":
+        _gate_search(args)
 
 
 def _validate(instance_path: str, corpus_path: str, access_mode: str) -> None:
@@ -98,6 +111,28 @@ def _evaluate(instance_path: str, prediction_path: str) -> None:
     instances = load_instances(instance_path)
     predictions = load_predictions(prediction_path)
     print(json.dumps(metric_report(instances, predictions), indent=2, sort_keys=True))
+
+
+def _gate_search(args: argparse.Namespace) -> None:
+    instances = load_instances(args.instances)
+    candidates = load_corpus(args.candidate_corpus)
+    allowed_corpus, audit_records = gate_search_results(instances, candidates, access_mode=args.access_mode)
+    write_jsonl(args.out, (paper.to_dict() for paper in allowed_corpus))
+    write_jsonl(args.audit_out, (record.to_dict() for record in audit_records))
+
+    rejected = sum(1 for record in audit_records if record.decision == "rejected")
+    allowed = sum(1 for record in audit_records if record.decision == "allowed")
+    report = {
+        "instances": len(instances),
+        "candidate_papers": len(candidates),
+        "deduped_allowed_corpus_papers": len(allowed_corpus),
+        "allowed_instance_candidate_pairs": allowed,
+        "rejected_instance_candidate_pairs": rejected,
+        "access_mode": args.access_mode,
+        "out": str(Path(args.out)),
+        "audit_out": str(Path(args.audit_out)),
+    }
+    print(json.dumps(report, indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":

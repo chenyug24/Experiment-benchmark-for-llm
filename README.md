@@ -11,6 +11,7 @@ This workspace turns the proposal into a small, runnable benchmark scaffold for 
 - Conservative cutoff logic: `earliest_public_date(target) - buffer_days`.
 - Access regimes from the proposal: `strict`, `preprint_aware`, and `reference_only`.
 - Leakage warnings for target-paper presence, post-cutoff papers, target citations, and target-title mentions.
+- Search-agent gating: an evaluated agent may find its own candidate papers, but every candidate must pass temporal and leakage filters before it becomes usable prior literature.
 - Transparent TF-IDF retrieval with no external services.
 - Baselines: majority, random, nearest prior paper, evidence vote, and weighted evidence vote.
 - Metrics: direction accuracy, macro F1, relation accuracy, strength accuracy, expected calibration error, evidence recall, and negative-control false positive rate.
@@ -44,6 +45,23 @@ python -m temporal_benchmark.cli evaluate \
   --predictions outputs/weighted_vote_predictions.jsonl
 ```
 
+## Search-Agent Setting
+
+This is the setting where the agent can search for papers itself. The benchmark still controls leakage by treating search results as candidate papers, then passing them through a temporal gate.
+
+```bash
+python -m temporal_benchmark.cli gate-search \
+  --instances biology_pilot/biology_pilot_instances.jsonl \
+  --candidate-corpus biology_pilot/search_candidates_example.jsonl \
+  --access-mode preprint_aware \
+  --out outputs/biology_gated_prior_corpus.jsonl \
+  --audit-out outputs/biology_search_gate_audit.jsonl
+```
+
+The output corpus contains candidate papers allowed for at least one target instance. The audit file records every allow/reject decision with reasons such as `post_cutoff`, `is_target_paper`, `cites_target_paper`, `mentions_target_title`, or `not_peer_reviewed`.
+
+For a real experiment, replace `biology_pilot/search_candidates_example.jsonl` with papers found by your search agent or an API. The JSONL format is the same as the corpus format used by the baselines.
+
 ## Data Model
 
 Each prediction instance contains a target paper and one structured question. The prediction agent sees the question and allowed prior papers, but not the target paper text.
@@ -57,7 +75,7 @@ Each corpus paper has public release metadata and optional structured findings. 
 For a real pilot, create:
 
 - `data/pilot_instances.jsonl` with 50 to 100 target-paper questions.
-- `data/pilot_corpus.jsonl` with prior literature and release dates.
+- `data/pilot_corpus.jsonl` or a gated search-agent corpus with prior literature and release dates.
 - A held-out split so the majority baseline is fit on training labels only.
 - Manual leakage audit samples for ambiguous papers, preprints, and online-first publication records.
 

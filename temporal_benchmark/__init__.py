@@ -6,6 +6,7 @@ __all__ = [
     "io",
     "metrics",
     "retrieval",
+    "search_gate",
     "schema",
     "temporal",
 ]
