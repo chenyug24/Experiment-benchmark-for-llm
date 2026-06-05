@@ -16,6 +16,7 @@ This workspace turns the proposal into a small, runnable benchmark scaffold for 
 - Baselines: majority, random, nearest prior paper, evidence vote, and weighted evidence vote.
 - Metrics: direction accuracy, macro F1, relation accuracy, strength accuracy, expected calibration error, evidence recall, and negative-control false positive rate.
 - Prompt templates for the construction agent and evaluated forecasting agent.
+- Optional quantitative prediction fields for correlations and effect sizes: `numeric_metric`, `gold_numeric_value`, `numeric_tolerance`, `numeric_unit`, and `predicted_numeric_value`.
 
 ## Run It
 
@@ -67,6 +68,8 @@ For a real experiment, replace `biology_pilot/search_candidates_example.jsonl` w
 Each prediction instance contains a target paper and one structured question. The prediction agent sees the question and allowed prior papers, but not the target paper text.
 
 Questions include a `question_type` field. Ordinary and null-control questions usually have `relation_exists: true`; decoy-relation and some context-shift questions can use `relation_exists: false` with `gold_direction: "unsupported"`.
+
+Quantitative questions can add `numeric_metric`, `gold_numeric_value`, `numeric_tolerance`, and `numeric_unit`. For example, a correlation question might use `numeric_metric: "correlation_r"`, `gold_numeric_value: 0.42`, `numeric_tolerance: 0.10`, and `numeric_unit: "r"`. Predictions can include `predicted_numeric_value`, and evaluation reports numeric MAE, numeric coverage, and within-tolerance accuracy.
 
 Each corpus paper has public release metadata and optional structured findings. The starter baselines rely on these findings to infer directions from prior papers. In a full version, those findings can come from human annotation, information extraction, or a construction agent run only on temporally allowed prior papers.
 

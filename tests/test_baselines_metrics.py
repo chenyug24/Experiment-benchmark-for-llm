@@ -6,6 +6,9 @@ from temporal_benchmark.metrics import (
     evidence_recall,
     macro_f1,
     negative_control_false_positive_rate,
+    numeric_coverage,
+    numeric_mae,
+    numeric_within_tolerance_accuracy,
     relation_accuracy,
 )
 from temporal_benchmark.schema import Paper, Prediction, PredictionInstance
@@ -163,6 +166,46 @@ class BaselineMetricTests(unittest.TestCase):
 
         self.assertEqual(relation_accuracy([unsupported], predictions), 0.0)
         self.assertEqual(negative_control_false_positive_rate([unsupported], predictions), 1.0)
+
+
+    def test_quantitative_metrics_for_correlation_questions(self):
+        instance = PredictionInstance.from_dict(
+            {
+                "instance_id": "quant",
+                "target_paper": {
+                    "paper_id": "target",
+                    "title": "Target paper",
+                    "release_dates": {"journal_online": "2024-01-01"},
+                },
+                "question": {
+                    "question_id": "q_corr",
+                    "target_paper_id": "target",
+                    "entity_1": "biomarker X",
+                    "relation": "correlates with",
+                    "entity_2": "outcome Y",
+                    "context": "human cohort",
+                    "gold_direction": "positive",
+                    "gold_strength": "moderate",
+                    "numeric_metric": "correlation_r",
+                    "gold_numeric_value": 0.42,
+                    "numeric_tolerance": 0.1,
+                    "numeric_unit": "r",
+                },
+            }
+        )
+        predictions = [
+            Prediction(
+                question_id="q_corr",
+                predicted_direction="positive",
+                predicted_strength="moderate",
+                predicted_numeric_value=0.35,
+                confidence=0.8,
+            )
+        ]
+
+        self.assertAlmostEqual(numeric_mae([instance], predictions), 0.07)
+        self.assertEqual(numeric_coverage([instance], predictions), 1.0)
+        self.assertEqual(numeric_within_tolerance_accuracy([instance], predictions), 1.0)
 
 
 if __name__ == "__main__":

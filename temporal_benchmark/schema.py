@@ -144,6 +144,10 @@ class PredictionQuestion:
     gold_direction: AnswerLabel = "mixed"
     gold_strength: Strength = "unknown"
     relation_exists: bool = True
+    numeric_metric: str = ""
+    gold_numeric_value: float | None = None
+    numeric_tolerance: float | None = None
+    numeric_unit: str = ""
     gold_evidence_paper_ids: tuple[str, ...] = ()
 
     @classmethod
@@ -178,6 +182,10 @@ class PredictionQuestion:
             gold_direction=gold_direction,
             gold_strength=gold_strength,
             relation_exists=relation_exists,
+            numeric_metric=value.get("numeric_metric", ""),
+            gold_numeric_value=_optional_float(value.get("gold_numeric_value")),
+            numeric_tolerance=_optional_float(value.get("numeric_tolerance")),
+            numeric_unit=value.get("numeric_unit", ""),
             gold_evidence_paper_ids=tuple(value.get("gold_evidence_paper_ids", [])),
         )
 
@@ -194,6 +202,10 @@ class PredictionQuestion:
             "gold_direction": self.gold_direction,
             "gold_strength": self.gold_strength,
             "relation_exists": self.relation_exists,
+            "numeric_metric": self.numeric_metric,
+            "gold_numeric_value": self.gold_numeric_value,
+            "numeric_tolerance": self.numeric_tolerance,
+            "numeric_unit": self.numeric_unit,
             "gold_evidence_paper_ids": list(self.gold_evidence_paper_ids),
         }
 
@@ -280,6 +292,7 @@ class Prediction:
     predicted_strength: Strength = "unknown"
     relation_exists: bool = True
     confidence: float = 0.5
+    predicted_numeric_value: float | None = None
     supporting_paper_ids: tuple[str, ...] = ()
     rationale: str = ""
     method: str = "unknown"
@@ -301,6 +314,7 @@ class Prediction:
             predicted_strength=predicted_strength,
             relation_exists=value.get("relation_exists", predicted_direction != "unsupported"),
             confidence=confidence,
+            predicted_numeric_value=_optional_float(value.get("predicted_numeric_value")),
             supporting_paper_ids=tuple(value.get("supporting_paper_ids", [])),
             rationale=value.get("rationale", ""),
             method=value.get("method", "unknown"),
@@ -313,6 +327,7 @@ class Prediction:
             "predicted_strength": self.predicted_strength,
             "relation_exists": self.relation_exists,
             "confidence": self.confidence,
+            "predicted_numeric_value": self.predicted_numeric_value,
             "supporting_paper_ids": list(self.supporting_paper_ids),
             "rationale": self.rationale,
             "method": self.method,
@@ -324,3 +339,9 @@ def _default_answer_choices(question_type: str, relation_exists: bool) -> list[s
     if question_type != "ordinary" or not relation_exists:
         choices.append("unsupported")
     return choices
+
+
+def _optional_float(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    return float(value)

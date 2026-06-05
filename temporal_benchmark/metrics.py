@@ -60,6 +60,59 @@ def strength_accuracy(instances: list[PredictionInstance], predictions: list[Pre
     return correct / len(aligned)
 
 
+def numeric_mae(instances: list[PredictionInstance], predictions: list[Prediction]) -> float:
+    aligned = [
+        pair
+        for pair in align_predictions(instances, predictions)
+        if pair[0].question.gold_numeric_value is not None
+        and pair[1].predicted_numeric_value is not None
+    ]
+    if not aligned:
+        return 0.0
+    total_error = sum(
+        abs(instance.question.gold_numeric_value - prediction.predicted_numeric_value)
+        for instance, prediction in aligned
+        if instance.question.gold_numeric_value is not None
+        and prediction.predicted_numeric_value is not None
+    )
+    return total_error / len(aligned)
+
+
+def numeric_coverage(instances: list[PredictionInstance], predictions: list[Prediction]) -> float:
+    aligned = [
+        pair
+        for pair in align_predictions(instances, predictions)
+        if pair[0].question.gold_numeric_value is not None
+    ]
+    if not aligned:
+        return 0.0
+    covered = sum(prediction.predicted_numeric_value is not None for _, prediction in aligned)
+    return covered / len(aligned)
+
+
+def numeric_within_tolerance_accuracy(
+    instances: list[PredictionInstance],
+    predictions: list[Prediction],
+) -> float:
+    aligned = [
+        pair
+        for pair in align_predictions(instances, predictions)
+        if pair[0].question.gold_numeric_value is not None
+        and pair[0].question.numeric_tolerance is not None
+    ]
+    if not aligned:
+        return 0.0
+    correct = 0
+    for instance, prediction in aligned:
+        if prediction.predicted_numeric_value is None:
+            continue
+        gold = instance.question.gold_numeric_value
+        tolerance = instance.question.numeric_tolerance
+        if gold is not None and tolerance is not None:
+            correct += abs(gold - prediction.predicted_numeric_value) <= tolerance
+    return correct / len(aligned)
+
+
 def macro_f1(instances: list[PredictionInstance], predictions: list[Prediction]) -> float:
     aligned = _supported_direction_pairs(instances, predictions)
     labels = ("positive", "negative", "null", "mixed")
@@ -155,15 +208,23 @@ def question_type_distribution(instances: list[PredictionInstance]) -> dict[str,
     return dict(Counter(instance.question.question_type for instance in instances))
 
 
+def numeric_question_count(instances: list[PredictionInstance]) -> int:
+    return sum(instance.question.gold_numeric_value is not None for instance in instances)
+
+
 def metric_report(instances: list[PredictionInstance], predictions: list[Prediction]) -> dict[str, float | dict[str, int]]:
     return {
         "n": len(instances),
         "label_distribution": label_distribution(instances),
         "question_type_distribution": question_type_distribution(instances),
+        "numeric_question_count": numeric_question_count(instances),
         "direction_accuracy": direction_accuracy(instances, predictions),
         "macro_f1": macro_f1(instances, predictions),
         "relation_accuracy": relation_accuracy(instances, predictions),
         "strength_accuracy": strength_accuracy(instances, predictions),
+        "numeric_mae": numeric_mae(instances, predictions),
+        "numeric_coverage": numeric_coverage(instances, predictions),
+        "numeric_within_tolerance_accuracy": numeric_within_tolerance_accuracy(instances, predictions),
         "expected_calibration_error": expected_calibration_error(instances, predictions),
         "evidence_recall": evidence_recall(instances, predictions),
         "negative_control_false_positive_rate": negative_control_false_positive_rate(instances, predictions),

@@ -7,6 +7,7 @@ It contains:
 - `target_papers.md`: 10 candidate biology / biomedical target papers.
 - `biology_pilot_instances.jsonl`: 60 draft prediction instances, about 6 questions per target paper.
 - `search_candidates_example.jsonl`: a tiny example of agent-found candidate papers before temporal gating.
+- `quantitative_question_candidates.md`: candidate correlation / effect-size questions that need full-text numeric extraction.
 
 The goal is to test the updated benchmark design:
 
@@ -16,6 +17,7 @@ The goal is to test the updated benchmark design:
 - decoy-relation questions
 - context-shift questions
 - `unsupported` labels corresponding to the proposal's \(\bot\)
+- optional quantitative targets, such as correlation coefficients or effect sizes
 
 Important: this is a question-bank draft. Before using it as real benchmark data, verify every gold label against the target paper full text and verify the earliest public availability date using PubMed, Crossref, publisher pages, preprint records, and DOI metadata.
 
@@ -64,3 +66,5 @@ biology_pilot/biology_search_candidates.jsonl
 ```
 
 For each target paper, let the agent collect 10-30 candidate papers. Each candidate paper should include release dates, abstract, paper type, and structured findings when possible. Then run `gate-search` to produce the usable prior corpus.
+
+For quantitative questions, first use `quantitative_question_candidates.md` as a checklist. Do not fill `gold_numeric_value` until the exact number has been verified from the target paper full text or supplement.

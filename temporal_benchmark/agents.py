@@ -21,6 +21,10 @@ Return JSON with:
 - relation_exists
 - gold_direction
 - gold_strength: "weak", "moderate", "strong", or "unknown"
+- numeric_metric: optional, for quantitative questions such as "correlation_r", "coefficient_beta", "odds_ratio", "mean_difference", or "percent_change"
+- gold_numeric_value: optional number extracted from the target paper
+- numeric_tolerance: optional acceptable absolute error for numeric evaluation
+- numeric_unit: optional unit, such as "r", "beta", "OR", "%", "mm", or "tumor_volume_mm3"
 - short_gold_rationale
 
 Do not include information that the evaluated prediction agent should see.
@@ -36,6 +40,7 @@ Return JSON with:
 - predicted_direction: "positive", "negative", "null", "mixed", or "unsupported"
 - predicted_strength: "weak", "moderate", "strong", or "unknown"
 - relation_exists: false when the query is unsupported or cannot be inferred
+- predicted_numeric_value: number or null when the question asks for a quantitative value
 - confidence: number from 0 to 1
 - supporting_paper_ids
 - rationale
