@@ -4,7 +4,7 @@ import random
 from collections import Counter, defaultdict
 
 from .retrieval import TfidfRetriever, infer_direction_from_paper
-from .schema import Direction, Paper, Prediction, PredictionInstance
+from .schema import AnswerLabel, Paper, Prediction, PredictionInstance
 from .temporal import allowed_prior_papers
 
 
@@ -20,6 +20,7 @@ def majority_baseline(
             question_id=instance.question.question_id,
             predicted_direction=majority,
             predicted_strength="unknown",
+            relation_exists=majority != "unsupported",
             confidence=confidence,
             supporting_paper_ids=(),
             rationale="Majority class from the training split.",
@@ -34,17 +35,9 @@ def random_baseline(
     seed: int = 7,
 ) -> list[Prediction]:
     rng = random.Random(seed)
-    directions: tuple[Direction, ...] = ("positive", "negative", "null", "mixed")
+    default_choices: tuple[AnswerLabel, ...] = ("positive", "negative", "null", "mixed")
     return [
-        Prediction(
-            question_id=instance.question.question_id,
-            predicted_direction=rng.choice(directions),
-            predicted_strength="unknown",
-            confidence=0.25,
-            supporting_paper_ids=(),
-            rationale=f"Uniform random draw with seed {seed}.",
-            method="random",
-        )
+        _random_prediction(instance, rng, default_choices, seed)
         for instance in instances
     ]
 
@@ -61,12 +54,22 @@ def nearest_prior_paper_baseline(
             predictions.append(_fallback_prediction(instance, "nearest_prior", "No allowed prior papers."))
             continue
         top = TfidfRetriever(allowed).search(instance.question, k=1)[0]
-        direction = infer_direction_from_paper(instance.question, top.paper) or "mixed"
+        direction = infer_direction_from_paper(instance.question, top.paper)
+        if direction is None:
+            predictions.append(
+                _fallback_prediction(
+                    instance,
+                    "nearest_prior",
+                    f"Nearest prior paper {top.paper.paper_id} had no aligned structured finding.",
+                )
+            )
+            continue
         predictions.append(
             Prediction(
                 question_id=instance.question.question_id,
                 predicted_direction=direction,
                 predicted_strength="unknown",
+                relation_exists=True,
                 confidence=max(0.25, min(0.95, top.score)),
                 supporting_paper_ids=(top.paper.paper_id,),
                 rationale=f"Copied direction from nearest prior paper {top.paper.paper_id}.",
@@ -110,6 +113,7 @@ def evidence_voting_baseline(
                 question_id=instance.question.question_id,
                 predicted_direction=predicted_direction,
                 predicted_strength="unknown",
+                relation_exists=predicted_direction != "unsupported",
                 confidence=max(0.25, min(0.95, score / total if total else 0.25)),
                 supporting_paper_ids=tuple(supporting_ids),
                 rationale=f"Direction selected by {'weighted' if weighted else 'unweighted'} vote over retrieved prior evidence.",
@@ -119,11 +123,33 @@ def evidence_voting_baseline(
     return predictions
 
 
-def _fallback_prediction(instance: PredictionInstance, method: str, reason: str) -> Prediction:
+def _random_prediction(
+    instance: PredictionInstance,
+    rng: random.Random,
+    default_choices: tuple[AnswerLabel, ...],
+    seed: int,
+) -> Prediction:
+    choices = instance.question.answer_choices or default_choices
+    predicted_direction = rng.choice(choices)
     return Prediction(
         question_id=instance.question.question_id,
-        predicted_direction="mixed",
+        predicted_direction=predicted_direction,
         predicted_strength="unknown",
+        relation_exists=predicted_direction != "unsupported",
+        confidence=1.0 / len(choices),
+        supporting_paper_ids=(),
+        rationale=f"Uniform random draw from this question's answer choices with seed {seed}.",
+        method="random",
+    )
+
+
+def _fallback_prediction(instance: PredictionInstance, method: str, reason: str) -> Prediction:
+    predicted_direction = "unsupported" if "unsupported" in instance.question.answer_choices else "mixed"
+    return Prediction(
+        question_id=instance.question.question_id,
+        predicted_direction=predicted_direction,
+        predicted_strength="unknown",
+        relation_exists=predicted_direction != "unsupported",
         confidence=0.25,
         supporting_paper_ids=(),
         rationale=reason,

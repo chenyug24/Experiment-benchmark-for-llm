@@ -1,8 +1,14 @@
 import unittest
 
 from temporal_benchmark.baselines import evidence_voting_baseline, majority_baseline, nearest_prior_paper_baseline
-from temporal_benchmark.metrics import direction_accuracy, evidence_recall, macro_f1
-from temporal_benchmark.schema import Paper, PredictionInstance
+from temporal_benchmark.metrics import (
+    direction_accuracy,
+    evidence_recall,
+    macro_f1,
+    negative_control_false_positive_rate,
+    relation_accuracy,
+)
+from temporal_benchmark.schema import Paper, Prediction, PredictionInstance
 
 
 def _instance(gold_direction="positive"):
@@ -84,6 +90,79 @@ class BaselineMetricTests(unittest.TestCase):
 
         self.assertEqual(predictions[0].predicted_direction, "positive")
         self.assertEqual(macro_f1(instances, predictions), 0.25)
+
+
+    def test_unsupported_relation_is_not_counted_in_direction_accuracy(self):
+        unsupported = PredictionInstance.from_dict(
+            {
+                "instance_id": "decoy",
+                "target_paper": {
+                    "paper_id": "target",
+                    "title": "Target paper",
+                    "release_dates": {"journal_online": "2024-01-01"},
+                },
+                "question": {
+                    "question_id": "q_decoy",
+                    "target_paper_id": "target",
+                    "entity_1": "treatment X",
+                    "relation": "improves",
+                    "entity_2": "unsupported outcome Z",
+                    "context": "adult trial",
+                    "question_type": "decoy_relation",
+                    "answer_choices": ["positive", "negative", "null", "mixed", "unsupported"],
+                    "gold_direction": "unsupported",
+                    "relation_exists": False,
+                },
+            }
+        )
+        predictions = [
+            Prediction(
+                question_id="q_decoy",
+                predicted_direction="unsupported",
+                relation_exists=False,
+                confidence=0.8,
+            )
+        ]
+
+        self.assertEqual(direction_accuracy([unsupported], predictions), 0.0)
+        self.assertEqual(relation_accuracy([unsupported], predictions), 1.0)
+        self.assertEqual(negative_control_false_positive_rate([unsupported], predictions), 0.0)
+
+
+    def test_negative_control_false_positive_rate_counts_confident_non_nulls(self):
+        unsupported = PredictionInstance.from_dict(
+            {
+                "instance_id": "decoy",
+                "target_paper": {
+                    "paper_id": "target",
+                    "title": "Target paper",
+                    "release_dates": {"journal_online": "2024-01-01"},
+                },
+                "question": {
+                    "question_id": "q_decoy",
+                    "target_paper_id": "target",
+                    "entity_1": "treatment X",
+                    "relation": "improves",
+                    "entity_2": "unsupported outcome Z",
+                    "context": "adult trial",
+                    "question_type": "decoy_relation",
+                    "answer_choices": ["positive", "negative", "null", "mixed", "unsupported"],
+                    "gold_direction": "unsupported",
+                    "relation_exists": False,
+                },
+            }
+        )
+        predictions = [
+            Prediction(
+                question_id="q_decoy",
+                predicted_direction="positive",
+                relation_exists=True,
+                confidence=0.9,
+            )
+        ]
+
+        self.assertEqual(relation_accuracy([unsupported], predictions), 0.0)
+        self.assertEqual(negative_control_false_positive_rate([unsupported], predictions), 1.0)
 
 
 if __name__ == "__main__":

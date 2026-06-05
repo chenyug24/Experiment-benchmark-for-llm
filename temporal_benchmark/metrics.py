@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from .schema import Prediction, PredictionInstance
+from .schema import Prediction, PredictionInstance, VALID_DIRECTIONS
 
 
 def align_predictions(
@@ -24,7 +24,7 @@ def align_predictions(
 
 
 def direction_accuracy(instances: list[PredictionInstance], predictions: list[Prediction]) -> float:
-    aligned = align_predictions(instances, predictions)
+    aligned = _supported_direction_pairs(instances, predictions)
     if not aligned:
         return 0.0
     correct = sum(
@@ -39,7 +39,7 @@ def relation_accuracy(instances: list[PredictionInstance], predictions: list[Pre
     if not aligned:
         return 0.0
     correct = sum(
-        instance.question.relation_exists == prediction.relation_exists
+        instance.question.relation_exists == _predicted_relation_exists(prediction)
         for instance, prediction in aligned
     )
     return correct / len(aligned)
@@ -48,7 +48,7 @@ def relation_accuracy(instances: list[PredictionInstance], predictions: list[Pre
 def strength_accuracy(instances: list[PredictionInstance], predictions: list[Prediction]) -> float:
     aligned = [
         pair
-        for pair in align_predictions(instances, predictions)
+        for pair in _supported_direction_pairs(instances, predictions)
         if pair[0].question.gold_strength != "unknown"
     ]
     if not aligned:
@@ -61,7 +61,7 @@ def strength_accuracy(instances: list[PredictionInstance], predictions: list[Pre
 
 
 def macro_f1(instances: list[PredictionInstance], predictions: list[Prediction]) -> float:
-    aligned = align_predictions(instances, predictions)
+    aligned = _supported_direction_pairs(instances, predictions)
     labels = ("positive", "negative", "null", "mixed")
     f1_scores: list[float] = []
     for label in labels:
@@ -100,9 +100,7 @@ def expected_calibration_error(
         confidence = min(1.0, max(0.0, prediction.confidence))
         bucket_index = min(bins - 1, int(confidence * bins))
         buckets[bucket_index].append(confidence)
-        accuracies[bucket_index].append(
-            1.0 if instance.question.gold_direction == prediction.predicted_direction else 0.0
-        )
+        accuracies[bucket_index].append(1.0 if _is_prediction_correct(instance, prediction) else 0.0)
     total = len(aligned)
     ece = 0.0
     for bucket_confidences, bucket_accuracies in zip(buckets, accuracies):
@@ -130,18 +128,79 @@ def evidence_recall(instances: list[PredictionInstance], predictions: list[Predi
     return sum(recalls) / len(recalls)
 
 
+def negative_control_false_positive_rate(
+    instances: list[PredictionInstance],
+    predictions: list[Prediction],
+    confidence_threshold: float = 0.7,
+) -> float:
+    aligned = [
+        pair
+        for pair in align_predictions(instances, predictions)
+        if pair[0].question.is_negative_control
+    ]
+    if not aligned:
+        return 0.0
+    false_positives = sum(
+        _is_high_confidence_non_null_relation(prediction, confidence_threshold)
+        for _, prediction in aligned
+    )
+    return false_positives / len(aligned)
+
+
 def label_distribution(instances: list[PredictionInstance]) -> dict[str, int]:
     return dict(Counter(instance.question.gold_direction for instance in instances))
+
+
+def question_type_distribution(instances: list[PredictionInstance]) -> dict[str, int]:
+    return dict(Counter(instance.question.question_type for instance in instances))
 
 
 def metric_report(instances: list[PredictionInstance], predictions: list[Prediction]) -> dict[str, float | dict[str, int]]:
     return {
         "n": len(instances),
         "label_distribution": label_distribution(instances),
+        "question_type_distribution": question_type_distribution(instances),
         "direction_accuracy": direction_accuracy(instances, predictions),
         "macro_f1": macro_f1(instances, predictions),
         "relation_accuracy": relation_accuracy(instances, predictions),
         "strength_accuracy": strength_accuracy(instances, predictions),
         "expected_calibration_error": expected_calibration_error(instances, predictions),
         "evidence_recall": evidence_recall(instances, predictions),
+        "negative_control_false_positive_rate": negative_control_false_positive_rate(instances, predictions),
     }
+
+
+def _supported_direction_pairs(
+    instances: list[PredictionInstance],
+    predictions: list[Prediction],
+) -> list[tuple[PredictionInstance, Prediction]]:
+    return [
+        pair
+        for pair in align_predictions(instances, predictions)
+        if pair[0].question.expects_direction
+    ]
+
+
+def _predicted_relation_exists(prediction: Prediction) -> bool:
+    return prediction.relation_exists and prediction.predicted_direction != "unsupported"
+
+
+def _is_prediction_correct(instance: PredictionInstance, prediction: Prediction) -> bool:
+    if instance.question.relation_exists != _predicted_relation_exists(prediction):
+        return False
+    if not instance.question.relation_exists:
+        return prediction.predicted_direction == "unsupported"
+    if instance.question.gold_direction in VALID_DIRECTIONS:
+        return instance.question.gold_direction == prediction.predicted_direction
+    return instance.question.gold_direction == prediction.predicted_direction
+
+
+def _is_high_confidence_non_null_relation(
+    prediction: Prediction,
+    confidence_threshold: float,
+) -> bool:
+    return (
+        prediction.confidence >= confidence_threshold
+        and _predicted_relation_exists(prediction)
+        and prediction.predicted_direction not in {"null", "unsupported"}
+    )

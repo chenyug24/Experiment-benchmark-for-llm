@@ -5,12 +5,15 @@ This workspace turns the proposal into a small, runnable benchmark scaffold for 
 ## What Is Implemented
 
 - JSONL schemas for target papers, prediction questions, prior-corpus papers, findings, and predictions.
+- Logical-query fields for \(X\), \(Y\), context \(Z\), relation \(r\), and question type.
+- Negative-control questions: `null_control`, `decoy_relation`, and `context_shift`.
+- An `unsupported` answer label matching the proposal's \(\bot\) relation label.
 - Conservative cutoff logic: `earliest_public_date(target) - buffer_days`.
 - Access regimes from the proposal: `strict`, `preprint_aware`, and `reference_only`.
 - Leakage warnings for target-paper presence, post-cutoff papers, target citations, and target-title mentions.
 - Transparent TF-IDF retrieval with no external services.
 - Baselines: majority, random, nearest prior paper, evidence vote, and weighted evidence vote.
-- Metrics: direction accuracy, macro F1, relation accuracy, strength accuracy, expected calibration error, and evidence recall.
+- Metrics: direction accuracy, macro F1, relation accuracy, strength accuracy, expected calibration error, evidence recall, and negative-control false positive rate.
 - Prompt templates for the construction agent and evaluated forecasting agent.
 
 ## Run It
@@ -44,6 +47,8 @@ python -m temporal_benchmark.cli evaluate \
 ## Data Model
 
 Each prediction instance contains a target paper and one structured question. The prediction agent sees the question and allowed prior papers, but not the target paper text.
+
+Questions include a `question_type` field. Ordinary and null-control questions usually have `relation_exists: true`; decoy-relation and some context-shift questions can use `relation_exists: false` with `gold_direction: "unsupported"`.
 
 Each corpus paper has public release metadata and optional structured findings. The starter baselines rely on these findings to infer directions from prior papers. In a full version, those findings can come from human annotation, information extraction, or a construction agent run only on temporally allowed prior papers.
 

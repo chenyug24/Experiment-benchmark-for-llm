@@ -16,10 +16,11 @@ Return JSON with:
 - relation
 - entity_2
 - context
-- answer_choices: ["positive", "negative", "null", "mixed"]
+- question_type: "ordinary", "null_control", "decoy_relation", or "context_shift"
+- answer_choices: ["positive", "negative", "null", "mixed"] plus "unsupported" for unsupported controls
+- relation_exists
 - gold_direction
 - gold_strength: "weak", "moderate", "strong", or "unknown"
-- relation_exists
 - short_gold_rationale
 
 Do not include information that the evaluated prediction agent should see.
@@ -32,9 +33,9 @@ post-cutoff information. Predict the likely result of the target paper from
 the temporally valid prior literature only.
 
 Return JSON with:
-- predicted_direction: "positive", "negative", "null", or "mixed"
+- predicted_direction: "positive", "negative", "null", "mixed", or "unsupported"
 - predicted_strength: "weak", "moderate", "strong", or "unknown"
-- relation_exists
+- relation_exists: false when the query is unsupported or cannot be inferred
 - confidence: number from 0 to 1
 - supporting_paper_ids
 - rationale

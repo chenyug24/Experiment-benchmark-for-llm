@@ -88,4 +88,6 @@ def infer_direction_from_paper(question: PredictionQuestion, paper: Paper) -> st
         if score > best_score:
             best_direction = finding.direction
             best_score = score
+    if best_score <= 0:
+        return None
     return best_direction

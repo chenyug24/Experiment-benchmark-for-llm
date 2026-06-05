@@ -4,13 +4,17 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 Direction = Literal["positive", "negative", "null", "mixed"]
+AnswerLabel = Literal["positive", "negative", "null", "mixed", "unsupported"]
 Strength = Literal["weak", "moderate", "strong", "unknown"]
 AccessMode = Literal["strict", "preprint_aware", "reference_only"]
 PaperType = Literal["peer_reviewed", "preprint", "conference", "other"]
+QuestionType = Literal["ordinary", "null_control", "decoy_relation", "context_shift"]
 
 VALID_DIRECTIONS = {"positive", "negative", "null", "mixed"}
+VALID_ANSWER_LABELS = {"positive", "negative", "null", "mixed", "unsupported"}
 VALID_STRENGTHS = {"weak", "moderate", "strong", "unknown"}
 VALID_ACCESS_MODES = {"strict", "preprint_aware", "reference_only"}
+VALID_QUESTION_TYPES = {"ordinary", "null_control", "decoy_relation", "context_shift"}
 
 
 @dataclass(frozen=True)
@@ -135,20 +139,33 @@ class PredictionQuestion:
     relation: str
     entity_2: str
     context: str
-    answer_choices: tuple[Direction, ...] = ("positive", "negative", "null", "mixed")
-    gold_direction: Direction = "mixed"
+    question_type: QuestionType = "ordinary"
+    answer_choices: tuple[AnswerLabel, ...] = ("positive", "negative", "null", "mixed")
+    gold_direction: AnswerLabel = "mixed"
     gold_strength: Strength = "unknown"
     relation_exists: bool = True
     gold_evidence_paper_ids: tuple[str, ...] = ()
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "PredictionQuestion":
-        gold_direction = value["gold_direction"]
+        question_type = value.get("question_type", "ordinary")
+        if question_type not in VALID_QUESTION_TYPES:
+            raise ValueError(f"Invalid question type: {question_type}")
+
+        relation_exists = bool(value.get("relation_exists", True))
+        gold_direction = value.get("gold_direction")
+        if gold_direction is None:
+            gold_direction = "mixed" if relation_exists else "unsupported"
         gold_strength = value.get("gold_strength", "unknown")
-        if gold_direction not in VALID_DIRECTIONS:
+        answer_choices = tuple(value.get("answer_choices", _default_answer_choices(question_type, relation_exists)))
+
+        if gold_direction not in VALID_ANSWER_LABELS:
             raise ValueError(f"Invalid gold direction: {gold_direction}")
         if gold_strength not in VALID_STRENGTHS:
             raise ValueError(f"Invalid gold strength: {gold_strength}")
+        invalid_choices = [choice for choice in answer_choices if choice not in VALID_ANSWER_LABELS]
+        if invalid_choices:
+            raise ValueError(f"Invalid answer choices: {invalid_choices}")
         return cls(
             question_id=value["question_id"],
             target_paper_id=value["target_paper_id"],
@@ -156,10 +173,11 @@ class PredictionQuestion:
             relation=value["relation"],
             entity_2=value["entity_2"],
             context=value.get("context", ""),
-            answer_choices=tuple(value.get("answer_choices", ["positive", "negative", "null", "mixed"])),
+            question_type=question_type,
+            answer_choices=answer_choices,
             gold_direction=gold_direction,
             gold_strength=gold_strength,
-            relation_exists=value.get("relation_exists", True),
+            relation_exists=relation_exists,
             gold_evidence_paper_ids=tuple(value.get("gold_evidence_paper_ids", [])),
         )
 
@@ -171,6 +189,7 @@ class PredictionQuestion:
             "relation": self.relation,
             "entity_2": self.entity_2,
             "context": self.context,
+            "question_type": self.question_type,
             "answer_choices": list(self.answer_choices),
             "gold_direction": self.gold_direction,
             "gold_strength": self.gold_strength,
@@ -188,6 +207,14 @@ class PredictionQuestion:
             f"Does {self.entity_1} {self.relation} {self.entity_2} "
             f"in the following context: {self.context}?"
         )
+
+    @property
+    def expects_direction(self) -> bool:
+        return self.relation_exists and self.gold_direction in VALID_DIRECTIONS
+
+    @property
+    def is_negative_control(self) -> bool:
+        return self.question_type != "ordinary"
 
 
 @dataclass(frozen=True)
@@ -249,7 +276,7 @@ class PredictionInstance:
 @dataclass(frozen=True)
 class Prediction:
     question_id: str
-    predicted_direction: Direction
+    predicted_direction: AnswerLabel
     predicted_strength: Strength = "unknown"
     relation_exists: bool = True
     confidence: float = 0.5
@@ -261,7 +288,7 @@ class Prediction:
     def from_dict(cls, value: dict[str, Any]) -> "Prediction":
         predicted_direction = value["predicted_direction"]
         predicted_strength = value.get("predicted_strength", "unknown")
-        if predicted_direction not in VALID_DIRECTIONS:
+        if predicted_direction not in VALID_ANSWER_LABELS:
             raise ValueError(f"Invalid predicted direction: {predicted_direction}")
         if predicted_strength not in VALID_STRENGTHS:
             raise ValueError(f"Invalid predicted strength: {predicted_strength}")
@@ -272,7 +299,7 @@ class Prediction:
             question_id=value["question_id"],
             predicted_direction=predicted_direction,
             predicted_strength=predicted_strength,
-            relation_exists=value.get("relation_exists", True),
+            relation_exists=value.get("relation_exists", predicted_direction != "unsupported"),
             confidence=confidence,
             supporting_paper_ids=tuple(value.get("supporting_paper_ids", [])),
             rationale=value.get("rationale", ""),
@@ -290,3 +317,10 @@ class Prediction:
             "rationale": self.rationale,
             "method": self.method,
         }
+
+
+def _default_answer_choices(question_type: str, relation_exists: bool) -> list[str]:
+    choices = ["positive", "negative", "null", "mixed"]
+    if question_type != "ordinary" or not relation_exists:
+        choices.append("unsupported")
+    return choices
