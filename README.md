@@ -79,6 +79,8 @@ The recommended biology pilot file is `biology_pilot/biology_pilot_instances_v2.
 
 The readable guide is `biology_pilot/questions_and_answers_v2_zh.md`.
 
+For an English example of what a benchmark run looks like, see `docs/example_benchmark_run.md`.
+
 ## Next Implementation Step
 
 For a real pilot, create:
