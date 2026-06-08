@@ -73,6 +73,12 @@ Quantitative questions can add `numeric_metric`, `gold_numeric_value`, `numeric_
 
 Each corpus paper has public release metadata and optional structured findings. The starter baselines rely on these findings to infer directions from prior papers. In a full version, those findings can come from human annotation, information extraction, or a construction agent run only on temporally allowed prior papers.
 
+## Biology Pilot
+
+The recommended biology pilot file is `biology_pilot/biology_pilot_instances_v2.jsonl`. It contains 60 questions from 10 target papers, richer experimental context for each question, no `unsupported` answers, and a more balanced directional label distribution: `negative`, `positive`, `null`, and `mixed`.
+
+The readable guide is `biology_pilot/questions_and_answers_v2_zh.md`.
+
 ## Next Implementation Step
 
 For a real pilot, create:

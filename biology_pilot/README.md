@@ -7,6 +7,8 @@ It contains:
 - `target_papers.md`: 10 candidate biology / biomedical target papers.
 - `biology_pilot_instances.jsonl`: 60 draft prediction instances, about 6 questions per target paper.
 - `questions_and_answers_zh.md`: Chinese readable version of the 60 questions and answers.
+- `biology_pilot_instances_v2.jsonl`: recommended v2 version with richer context, no `unsupported` labels, and balanced positive / negative / null / mixed labels.
+- `questions_and_answers_v2_zh.md`: readable v2 question-answer guide with the expanded context for each question.
 - `search_candidates_example.jsonl`: a tiny example of agent-found candidate papers before temporal gating.
 - `quantitative_question_candidates.md`: candidate correlation / effect-size questions that need full-text numeric extraction.
 
@@ -22,13 +24,15 @@ The goal is to test the updated benchmark design:
 
 Important: this is a question-bank draft. Before using it as real benchmark data, verify every gold label against the target paper full text and verify the earliest public availability date using PubMed, Crossref, publisher pages, preprint records, and DOI metadata.
 
+Prefer the v2 files for new experiments. The original `biology_pilot_instances.jsonl` is kept as an earlier draft, but it uses `unsupported` controls and a support-based meaning of `positive`. The v2 file instead uses directional labels: `positive` means increase / improvement / positive association, while `negative` means decrease / suppression / negative association.
+
 ## How To Inspect It
 
 From the repo root:
 
 ```bash
 python -m temporal_benchmark.cli validate \
-  --instances biology_pilot/biology_pilot_instances.jsonl \
+  --instances biology_pilot/biology_pilot_instances_v2.jsonl \
   --corpus data/example_corpus.jsonl \
   --access-mode preprint_aware
 ```
