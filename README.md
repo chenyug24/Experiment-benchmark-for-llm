@@ -77,7 +77,7 @@ Each corpus paper has public release metadata and optional structured findings. 
 
 The recommended biology pilot file is `biology_pilot/biology_pilot_instances_v2.jsonl`. It contains 60 questions from 10 target papers, richer experimental context for each question, no `unsupported` answers, and a more balanced directional label distribution: `negative`, `positive`, `null`, and `mixed`.
 
-The readable guide is `biology_pilot/questions_and_answers_v2_zh.md`.
+The readable English guide is `biology_pilot/questions_and_answers_v2.md`. A Chinese reference version is also available at `biology_pilot/questions_and_answers_v2_zh.md`.
 
 For an English example of what a benchmark run looks like, see `docs/example_benchmark_run.md`.
 

@@ -8,7 +8,8 @@ It contains:
 - `biology_pilot_instances.jsonl`: 60 draft prediction instances, about 6 questions per target paper.
 - `questions_and_answers_zh.md`: Chinese readable version of the 60 questions and answers.
 - `biology_pilot_instances_v2.jsonl`: recommended v2 version with richer context, no `unsupported` labels, and balanced positive / negative / null / mixed labels.
-- `questions_and_answers_v2_zh.md`: readable v2 question-answer guide with the expanded context for each question.
+- `questions_and_answers_v2.md`: readable English v2 question-answer guide with the expanded context for each question.
+- `questions_and_answers_v2_zh.md`: Chinese reference version of the v2 question-answer guide.
 - `search_candidates_example.jsonl`: a tiny example of agent-found candidate papers before temporal gating.
 - `quantitative_question_candidates.md`: candidate correlation / effect-size questions that need full-text numeric extraction.
 
